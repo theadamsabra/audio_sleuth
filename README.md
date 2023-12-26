@@ -7,3 +7,4 @@ TODO:
 - [ ] Add bash scripts for downloading HAD
 - [ ] README for HAD
 - [ ] Create simple baseline model, training script, evaluation set
+- [ ] Make pip package
