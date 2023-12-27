@@ -22,6 +22,15 @@ class ResampleBlock(nn.Module):
         self.resample_to_original = Resample(self.new_sr, self.input_sr)
 
     def forward(self, waveform:torch.Tensor) -> torch.Tensor:
+        '''
+        Core implementation of resample block.
+
+        Args:
+            waveform (torch.Tensor): audio tensor in time domain.
+        
+        Returns:
+            resampled_waveform (torch.Tensor): resampled audio tensor.
+        '''
         waveform = self.resample_to_new(waveform) 
         if self.return_original_sr:
             return self.resample_to_original(waveform)

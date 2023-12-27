@@ -4,13 +4,12 @@ import torch
 from torch import nn
 import librosa
 import math
-from modules.augmentations import ResampledMelSpectrogram 
 from torch.utils.data import Dataset
 
 class HalfTruthDataset(Dataset):
     '''
-    Torch Dataset class of Half Truth Dataset by:
-    Jiangyan Yi, Ye Bai, Jianhua Tao, Haoxin Ma, Zhengkun Tian, Chenglong Wang, Tao Wang, Ruibo Fu
+    Torch dataset of Half Truth Dataset by Jiangyan Yi, Ye Bai, Jianhua Tao, Haoxin Ma, Zhengkun Tian, 
+    Chenglong Wang, Tao Wang, and Ruibo Fu.
     
     Data can be downloaded here: https://zenodo.org/records/10377492
     Paper can be read here: https://arxiv.org/pdf/2104.03617.pdf
@@ -55,7 +54,7 @@ class HalfTruthDataset(Dataset):
         num_samples_audio = len(audio)
 
         # Map timestamps to samplewise labels.
-        labels = self.generate_timestamps(timestamps, num_samples_audio)
+        labels = self._generate_timestamps(timestamps, num_samples_audio)
 
         # Crop audio and samplewise labels  
         start_idx, end_idx, audio = self._fit_duration(audio)
@@ -65,12 +64,12 @@ class HalfTruthDataset(Dataset):
             # transform audio:
             audio = self.transform(audio)
             # pad labels on both sides to accomodate spectrogram: 
-            padded_labels = self.pad_labels(labels) 
+            padded_labels = self._pad_labels(labels) 
             labels = self._frame_labels(padded_labels)
 
         return audio, labels 
 
-    def pad_labels(self, labels:torch.Tensor) -> torch.Tensor:
+    def _pad_labels(self, labels:torch.Tensor) -> torch.Tensor:
         '''
         Pad ground truth labels through reflection padding.
         
@@ -135,7 +134,7 @@ class HalfTruthDataset(Dataset):
             return start_idx, end_idx, vector[start_idx:end_idx]
 
 
-    def generate_timestamps(self, timestamps:str, num_samples_audio:int) -> torch.Tensor:
+    def _generate_timestamps(self, timestamps:str, num_samples_audio:int) -> torch.Tensor:
         '''
         Helper function to generate array of timestamp labels.
 
