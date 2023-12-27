@@ -22,8 +22,9 @@ class HalfTruthDataset(Dataset):
         hop_size (int): hop size of FFT in samples. default to 128.
         fs (int): sampling rate of file. default to 44100.
         transform (nn.Module): audio augmentation pipeline. default set to None.
+        for_huggingface (bool): flag to determine if output of __getitem__ is dict for huggingface dataset conversion. default is False.
     '''
-    def __init__(self, path_to_txt:str, duration_sec:int, fs:int=44100, transform:nn.Module=None, *args, **kwargs) -> None:
+    def __init__(self, path_to_txt:str, duration_sec:int, fs:int=44100, transform:nn.Module=None, for_huggingface:bool=False, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         # Get path and open text file:
         self.path_to_txt = path_to_txt
@@ -32,6 +33,7 @@ class HalfTruthDataset(Dataset):
         self.duration_sec = duration_sec
         self.fs = fs
         self.transform = transform(*args, **kwargs)
+        self.for_huggingface = for_huggingface
         # Construct additional params from path and metadata:
         self.root_dir = os.path.dirname(self.path_to_txt)
         self.set_type = os.path.basename(self.root_dir).split('_')[-1]
@@ -64,7 +66,11 @@ class HalfTruthDataset(Dataset):
             padded_labels = self._pad_labels(labels) 
             labels = self._frame_labels(padded_labels)
 
-        return audio, labels 
+        # Enable conversion of torch.utils.data.Dataset -> huggingface dataset
+        if self.for_huggingface:
+            return {'audio': audio, 'labels': labels}
+        else:
+            return audio, labels 
 
     def _pad_labels(self, labels:torch.Tensor) -> torch.Tensor:
         '''
