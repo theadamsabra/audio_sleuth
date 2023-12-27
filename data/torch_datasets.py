@@ -15,16 +15,16 @@ class HalfTruthDataset(Dataset):
     Paper can be read here: https://arxiv.org/pdf/2104.03617.pdf
 
     Args:
-        path_to_txt (str): path to text file containing paths and ground truth labels.
+        path_to_txt (str): path to text file containing paths and ground truth labels. assumes absolute path for easier 
+        parsing.
         duration_sec (int): duration of crop in seconds.
         n_fft (int): FFT size in samples. default to 512.
         win_length (int): window length of FFT in samples. default to 128.
         hop_size (int): hop size of FFT in samples. default to 128.
         fs (int): sampling rate of file. default to 44100.
         transform (nn.Module): audio augmentation pipeline. default set to None.
-        for_huggingface (bool): flag to determine if output of __getitem__ is dict for huggingface dataset conversion. default is False.
     '''
-    def __init__(self, path_to_txt:str, duration_sec:int, fs:int=44100, transform:nn.Module=None, for_huggingface:bool=False, *args, **kwargs) -> None:
+    def __init__(self, path_to_txt:str, duration_sec:int, fs:int=44100, transform:nn.Module=None, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         # Get path and open text file:
         self.path_to_txt = path_to_txt
@@ -32,8 +32,10 @@ class HalfTruthDataset(Dataset):
         # Store necessary params:
         self.duration_sec = duration_sec
         self.fs = fs
-        self.transform = transform(*args, **kwargs)
-        self.for_huggingface = for_huggingface
+        if transform:
+            self.transform = transform(*args, **kwargs)
+        else:
+            self.transform = transform
         # Construct additional params from path and metadata:
         self.root_dir = os.path.dirname(self.path_to_txt)
         self.set_type = os.path.basename(self.root_dir).split('_')[-1]
@@ -60,17 +62,14 @@ class HalfTruthDataset(Dataset):
         _, _, labels = self._fit_duration(labels, start_idx, end_idx)
 
         if self.transform:
-            # transform audio:
+            # Transform audio:
             audio = self.transform(audio)
-            # pad labels on both sides to accomodate spectrogram: 
+            # Pad labels on both sides to accomodate spectrogram: 
             padded_labels = self._pad_labels(labels) 
             labels = self._frame_labels(padded_labels)
 
         # Enable conversion of torch.utils.data.Dataset -> huggingface dataset
-        if self.for_huggingface:
-            return {'audio': audio, 'labels': labels}
-        else:
-            return audio, labels 
+        return audio, labels 
 
     def _pad_labels(self, labels:torch.Tensor) -> torch.Tensor:
         '''
@@ -125,7 +124,7 @@ class HalfTruthDataset(Dataset):
             end_index (int): end index of crop.
             vector (torch.Tensor): cropped vector of len (end_index - start_index).
         '''
-        duration_samples = self.duration_sec * self.fs
+        duration_samples = int(self.duration_sec * self.fs)
 
         # Get start/end idx if not defined
         if (not start_idx) or (not end_idx):
@@ -157,11 +156,11 @@ class HalfTruthDataset(Dataset):
         # Construct all ground truth labels from timestamp
         for ts in split_timestamps:
             start, end, label = ts.split('-')
-            # convert from string to float
+            # Convert from string to float
             start, end = float(start), float(end) 
-            # convert T/F to 0/1 respectively.
+            # Convert T/F to 0/1 respectively.
             label = 0 if label == 'T' else 1
-            # calculate number of samples and add it to the labels
+            # Calculate number of samples and add it to the labels
             num_samples = (end*self.fs) - (start*self.fs) 
             labels = [label] * math.ceil(num_samples)
             samplewise_labels += labels
