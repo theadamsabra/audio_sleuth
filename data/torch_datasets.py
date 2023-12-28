@@ -18,24 +18,19 @@ class HalfTruthDataset(Dataset):
         path_to_txt (str): path to text file containing paths and ground truth labels. assumes absolute path for easier 
         parsing.
         duration_sec (int): duration of crop in seconds.
-        n_fft (int): FFT size in samples. default to 512.
-        win_length (int): window length of FFT in samples. default to 128.
-        hop_size (int): hop size of FFT in samples. default to 128.
         fs (int): sampling rate of file. default to 44100.
         transform (nn.Module): audio augmentation pipeline. default set to None.
     '''
     def __init__(self, path_to_txt:str, duration_sec:int, fs:int=44100, transform:nn.Module=None, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+        super().__init__()
+        self.__dict__.update(kwargs)
         # Get path and open text file:
         self.path_to_txt = path_to_txt
         self.text_file = open(self.path_to_txt, 'r').read()
         # Store necessary params:
         self.duration_sec = duration_sec
         self.fs = fs
-        if transform:
-            self.transform = transform(*args, **kwargs)
-        else:
-            self.transform = transform
+        self.transform = transform
         # Construct additional params from path and metadata:
         self.root_dir = os.path.dirname(self.path_to_txt)
         self.set_type = os.path.basename(self.root_dir).split('_')[-1]
@@ -68,7 +63,6 @@ class HalfTruthDataset(Dataset):
             padded_labels = self._pad_labels(labels) 
             labels = self._frame_labels(padded_labels)
 
-        # Enable conversion of torch.utils.data.Dataset -> huggingface dataset
         return audio, labels 
 
     def _pad_labels(self, labels:torch.Tensor) -> torch.Tensor:
@@ -127,13 +121,11 @@ class HalfTruthDataset(Dataset):
         duration_samples = int(self.duration_sec * self.fs)
 
         # Get start/end idx if not defined
-        if (not start_idx) or (not end_idx):
+        if (not start_idx) and (not end_idx):
             start_idx = random.randrange(0, len(vector)-duration_samples)
             end_idx = start_idx + duration_samples
-            return start_idx, end_idx, vector[start_idx:end_idx]
-        # Otherwise, just crop:
-        else: 
-            return start_idx, end_idx, vector[start_idx:end_idx]
+
+        return start_idx, end_idx, vector[start_idx:end_idx]
 
 
     def _generate_timestamps(self, timestamps:str, num_samples_audio:int) -> torch.Tensor:
