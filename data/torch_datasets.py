@@ -21,7 +21,8 @@ class HalfTruthDataset(Dataset):
         fs (int): sampling rate of file. default to 44100.
         transform (nn.Module): audio augmentation pipeline. default set to None.
     '''
-    def __init__(self, path_to_txt:str, duration_sec:int, fs:int=44100, transform:nn.Module=None, *args, **kwargs) -> None:
+    def __init__(self, path_to_txt:str, duration_sec:int, fs:int=44100, \
+                 transform:nn.Module=None, hop_size:int=128, win_size:int=128, *args, **kwargs) -> None:
         super().__init__()
         self.__dict__.update(kwargs)
         # Get path and open text file:
@@ -31,6 +32,8 @@ class HalfTruthDataset(Dataset):
         self.duration_sec = duration_sec
         self.fs = fs
         self.transform = transform
+        self.hop_size = hop_size
+        self.win_size = win_size
         # Construct additional params from path and metadata:
         self.root_dir = os.path.dirname(self.path_to_txt)
         self.set_type = os.path.basename(self.root_dir).split('_')[-1]
@@ -101,7 +104,7 @@ class HalfTruthDataset(Dataset):
         Returns:
             framed_labels (torch.Tensor): fake speech probability of frame.
         '''
-        framed_labels = labels.unfold(0, self.win_length, self.hop_size)
+        framed_labels = labels.unfold(0, self.win_size, self.hop_size)
         return torch.mean(framed_labels, dim=-1)
 
     def _fit_duration(self, vector, start_idx=None, end_idx=None):
