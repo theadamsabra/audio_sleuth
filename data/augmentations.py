@@ -38,11 +38,19 @@ class ResampleBlock(nn.Module):
             return waveform
 
 class Augmentations(nn.Module):
+    '''
+    Core augmentation class to allow for a chain of augmentations applied to data. Used as core transformation internally.
+
+    Args:
+        augmentation_list (list[nn.Module]): list of all augmentations to be applied to the data. each augmentation
+        must be inherited from nn.Module.
+    '''
     def __init__(self, augmentation_list:list[nn.Module], *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.augmentation_list = nn.ModuleList(augmentation_list)
     
     def forward(self, x:torch.Tensor) -> torch.Tensor:
+        '''Loop through each augmentation and sequentially run the forward.'''
         for augmentation in self.augmentation_list:
             x = augmentation(x)  
         return x
