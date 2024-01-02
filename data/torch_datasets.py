@@ -3,7 +3,6 @@ import random
 import torch 
 import librosa
 import math
-from torch import nn
 from torch.nn import Module
 from torch import Tensor
 from torch.utils.data import Dataset
@@ -15,18 +14,18 @@ class BaseDataset(Dataset):
     Args:
         duration_sec (float): duration of crop in seconds.
         fs (int): sampling rate of file.
-        transform (Module): audio augmentation pipeline. default set to None.
         hop_size (int): hop size of transformations. 
         win_size (int): win size of transformations.
+        transform (Module): audio augmentation pipeline. default set to None.
     '''
-    def __init__(self, duration_sec:float, fs:int, transform:Module, \
-                 hop_size:int, win_size:int) -> None:
+    def __init__(self, duration_sec:float, fs:int, hop_size:int, win_size:int, \
+                 transform:Module=None) -> None:
         super().__init__()
         self.duration_sec = duration_sec
         self.fs = fs
-        self.transform = transform
         self.hop_size = hop_size
         self.win_size = win_size
+        self.transform = transform
 
     def __len__(self):
         '''Will be overwritten for each dataset.'''
@@ -49,14 +48,19 @@ class BaseDataset(Dataset):
         # Calculate total len needed with padding and get differnce
         total_len = math.ceil(len(vector) / self.hop_size) * self.hop_size
         pad_len = total_len - len(vector)
-        pad_len_both_sides = pad_len // 2
+
+        if pad_len % 2 == 0:
+            right = left = int(pad_len / 2)
+        else:
+            right = int(pad_len / 2)
+            left = int(pad_len / 2) + (pad_len % 2)
 
         # Pad through reflection
         left_pad_label = vector[0].item()
         right_pad_label = vector[-1].item()
 
-        left_padding = Tensor([left_pad_label] * pad_len_both_sides)
-        right_padding = Tensor([right_pad_label] * pad_len_both_sides)
+        left_padding = Tensor([left_pad_label] * left)
+        right_padding = Tensor([right_pad_label] * right)
 
         return torch.cat([left_padding, vector, right_padding])
 
