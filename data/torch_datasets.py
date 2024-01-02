@@ -4,10 +4,96 @@ import torch
 import librosa
 import math
 from torch import nn
+from torch.nn import Module
 from torch import Tensor
 from torch.utils.data import Dataset
 
-class HalfTruthDataset(Dataset):
+class BaseDataset(Dataset):
+    '''
+    Base class for all datasets. Contains general functions leveraged by all other classes.
+    
+    Args:
+        duration_sec (float): duration of crop in seconds.
+        fs (int): sampling rate of file.
+        transform (Module): audio augmentation pipeline. default set to None.
+        hop_size (int): hop size of transformations. 
+        win_size (int): win size of transformations.
+    '''
+    def __init__(self, duration_sec:float, fs:int, transform:Module, \
+                 hop_size:int, win_size:int) -> None:
+        super().__init__()
+        self.duration_sec = duration_sec
+        self.fs = fs
+        self.transform = transform
+        self.hop_size = hop_size
+        self.win_size = win_size
+
+    def __len__(self):
+        '''Will be overwritten for each dataset.'''
+        pass 
+
+    def __getitem__(self, idx):
+        '''Will be overwritten for each dataset.'''
+        pass
+
+    def _pad_vector(self, vector:Tensor) -> Tensor:
+        '''
+        Pad vector for framing. Currently only supporting reflection padding.
+        
+        Args:
+            vector (Tensor): arbitrary 1D vector. 
+        
+        Returns:
+            padded_vector (Tensor): padded vector to accomodate framing.
+        '''
+        # Calculate total len needed with padding and get differnce
+        total_len = math.ceil(len(vector) / self.hop_size) * self.hop_size
+        pad_len = total_len - len(vector)
+        pad_len_both_sides = pad_len // 2
+
+        # Pad through reflection
+        left_pad_label = vector[0].item()
+        right_pad_label = vector[-1].item()
+
+        left_padding = Tensor([left_pad_label] * pad_len_both_sides)
+        right_padding = Tensor([right_pad_label] * pad_len_both_sides)
+
+        return torch.cat([left_padding, vector, right_padding])
+
+    def _frame_vector(self, vector:Tensor) -> Tensor:
+        '''
+        Frame vector of samplewise labels by win length and hop size of FFT. Take mean of every frame to
+        generate frame-wise labels. Framing is done after padding.
+
+        Args:
+            vector (Tensor): arbitrary 1D vector. 
+        
+        Returns:
+            framed_vector (Tensor): fake speech probability of frame.
+        '''
+        framed_labels = vector.unfold(0, self.win_size, self.hop_size)
+        return torch.mean(framed_labels, dim=-1)
+
+    def _construct_random_indices(self, vector:Tensor) -> tuple[int, int]:
+        '''
+        Construct random indices from length of vector.
+
+        Args:
+            vector (Tensor): samplewise labels of real/fake speech. 
+        
+        Returns:
+            start_idx (int): start index of vector.
+            end_idx (int): end index of vector.
+        '''
+        duration_samples = int(self.duration_sec * self.fs)
+
+        start_idx = random.randrange(0, len(vector)-duration_samples)
+        end_idx = start_idx + duration_samples
+
+        return start_idx, end_idx 
+
+
+class HalfTruthDataset(BaseDataset):
     '''
     Torch dataset of Half Truth Dataset by Jiangyan Yi, Ye Bai, Jianhua Tao, Haoxin Ma, Zhengkun Tian, 
     Chenglong Wang, Tao Wang, and Ruibo Fu.
@@ -18,23 +104,16 @@ class HalfTruthDataset(Dataset):
     Args:
         path_to_txt (str): path to text file containing paths and ground truth labels. assumes absolute path for easier 
         parsing.
-        duration_sec (int): duration of crop in seconds.
-        fs (int): sampling rate of file. default to 44100.
-        transform (nn.Module): audio augmentation pipeline. default set to None.
+        duration_sec (float): duration of crop in seconds.
+        fs (int): sampling rate of file.
+        transform (Module): audio augmentation pipeline. default set to None.
+        hop_size (int): hop size of transformations. default set to 128.
+        win_size (int): win size of transformations. default set to 128.
     '''
-    def __init__(self, path_to_txt:str, duration_sec:int, fs:int=44100, \
-                 transform:nn.Module=None, hop_size:int=128, win_size:int=128, *args, **kwargs) -> None:
-        super().__init__()
-        self.__dict__.update(kwargs)
-        # Get path and open text file:
+    def __init__(self, path_to_txt:str, duration_sec:float, fs:int, transform:Module=None, hop_size: int = 128, win_size: int = 128) -> None:
+        super().__init__(duration_sec, fs, transform, hop_size, win_size)
         self.path_to_txt = path_to_txt
         self.text_file = open(self.path_to_txt, 'r').read()
-        # Store necessary params:
-        self.duration_sec = duration_sec
-        self.fs = fs
-        self.transform = transform
-        self.hop_size = hop_size
-        self.win_size = win_size
         # Construct additional params from path and metadata:
         self.root_dir = os.path.dirname(self.path_to_txt)
         self.set_type = os.path.basename(self.root_dir).split('_')[-1]
@@ -56,83 +135,21 @@ class HalfTruthDataset(Dataset):
         # Map timestamps to samplewise labels.
         labels = self._generate_timestamps(timestamps, num_samples_audio)
 
+        # Generate start and end indices to crop:
+        start_idx, end_idx = self._construct_random_indices(audio)
         # Crop audio and samplewise labels  
-        start_idx, end_idx, audio = self._fit_duration(audio)
-        _, _, labels = self._fit_duration(labels, start_idx, end_idx)
+        audio = audio[start_idx:end_idx]
+        labels = audio[start_idx:end_idx]
 
         if self.transform:
             # Transform audio:
             audio = self.transform(audio)
             # Pad labels on both sides to accomodate spectrogram: 
-            padded_labels = self._pad_labels(labels) 
-            labels = self._frame_labels(padded_labels)
+            padded_labels = self._pad_vector(labels) 
+            labels = self._frame_vector(padded_labels)
 
         return audio, labels 
-
-    def _pad_labels(self, labels:Tensor) -> Tensor:
-        '''
-        Pad ground truth labels through reflection padding.
-        
-        Args:
-            labels (Tensor): samplewise labels of real/fake speech. 
-        
-        Returns:
-            padded_labels (Tensor): padded vector to accomodate framing.
-        '''
-        # Calculate total len needed with padding and get differnce
-        total_len = math.ceil(len(labels) / self.hop_size) * self.hop_size
-        pad_len = total_len - len(labels)
-        pad_len_both_sides = pad_len // 2
-
-        # Pad through reflection
-        left_pad_label = labels[0].item()
-        right_pad_label = labels[-1].item()
-
-        left_padding = Tensor([left_pad_label] * pad_len_both_sides)
-        right_padding = Tensor([right_pad_label] * pad_len_both_sides)
-
-        return torch.cat([left_padding, labels, right_padding])
-        
-
-    def _frame_labels(self, labels:Tensor) -> Tensor:
-        '''
-        Frame vector of samplewise labels by win length and hop size of FFT. Take mean of every frame to
-        generate frame-wise labels. Framing is done after padding.
-
-        Args:
-            labels (Tensor): samplewise labels of real/fake speech. 
-        
-        Returns:
-            framed_labels (Tensor): fake speech probability of frame.
-        '''
-        framed_labels = labels.unfold(0, self.win_size, self.hop_size)
-        return torch.mean(framed_labels, dim=-1)
-
-    def _fit_duration(self, vector:Tensor, \
-                      start_idx:int=None, end_idx:int=None) -> tuple[int, int, Tensor]:
-        '''
-        Fit specfied duration. AKA crop vector and return crop indices.
-
-        Args:
-            vector (Tensor): vector to be cropped.
-            start_idx (int): start index of crop. default set to None.
-            end_idx (int): end index of crop. default set to None.
-
-        Returns:
-            start_idx (int): start index of crop.
-            end_index (int): end index of crop.
-            vector (Tensor): cropped vector of len (end_index - start_index).
-        '''
-        duration_samples = int(self.duration_sec * self.fs)
-
-        # Get start/end idx if not defined
-        if (not start_idx) and (not end_idx):
-            start_idx = random.randrange(0, len(vector)-duration_samples)
-            end_idx = start_idx + duration_samples
-
-        return start_idx, end_idx, vector[start_idx:end_idx]
-
-
+     
     def _generate_timestamps(self, timestamps:str, num_samples_audio:int) -> Tensor:
         '''
         Helper function to generate array of timestamp labels.
