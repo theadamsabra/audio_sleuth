@@ -1,9 +1,10 @@
 import os
 import random
 import torch 
-from torch import nn
 import librosa
 import math
+from torch import nn
+from torch import Tensor
 from torch.utils.data import Dataset
 
 class HalfTruthDataset(Dataset):
@@ -68,15 +69,15 @@ class HalfTruthDataset(Dataset):
 
         return audio, labels 
 
-    def _pad_labels(self, labels:torch.Tensor) -> torch.Tensor:
+    def _pad_labels(self, labels:Tensor) -> Tensor:
         '''
         Pad ground truth labels through reflection padding.
         
         Args:
-            labels (torch.Tensor): samplewise labels of real/fake speech. 
+            labels (Tensor): samplewise labels of real/fake speech. 
         
         Returns:
-            padded_labels (torch.Tensor): padded vector to accomodate framing.
+            padded_labels (Tensor): padded vector to accomodate framing.
         '''
         # Calculate total len needed with padding and get differnce
         total_len = math.ceil(len(labels) / self.hop_size) * self.hop_size
@@ -87,39 +88,40 @@ class HalfTruthDataset(Dataset):
         left_pad_label = labels[0].item()
         right_pad_label = labels[-1].item()
 
-        left_padding = torch.Tensor([left_pad_label] * pad_len_both_sides)
-        right_padding = torch.Tensor([right_pad_label] * pad_len_both_sides)
+        left_padding = Tensor([left_pad_label] * pad_len_both_sides)
+        right_padding = Tensor([right_pad_label] * pad_len_both_sides)
 
         return torch.cat([left_padding, labels, right_padding])
         
 
-    def _frame_labels(self, labels:torch.Tensor):
+    def _frame_labels(self, labels:Tensor) -> Tensor:
         '''
         Frame vector of samplewise labels by win length and hop size of FFT. Take mean of every frame to
         generate frame-wise labels. Framing is done after padding.
 
         Args:
-            labels (torch.Tensor): samplewise labels of real/fake speech. 
+            labels (Tensor): samplewise labels of real/fake speech. 
         
         Returns:
-            framed_labels (torch.Tensor): fake speech probability of frame.
+            framed_labels (Tensor): fake speech probability of frame.
         '''
         framed_labels = labels.unfold(0, self.win_size, self.hop_size)
         return torch.mean(framed_labels, dim=-1)
 
-    def _fit_duration(self, vector, start_idx=None, end_idx=None):
+    def _fit_duration(self, vector:Tensor, \
+                      start_idx:int=None, end_idx:int=None) -> tuple[int, int, Tensor]:
         '''
         Fit specfied duration. AKA crop vector and return crop indices.
 
         Args:
-            vector (torch.Tensor): vector to be cropped.
+            vector (Tensor): vector to be cropped.
             start_idx (int): start index of crop. default set to None.
             end_idx (int): end index of crop. default set to None.
 
         Returns:
             start_idx (int): start index of crop.
             end_index (int): end index of crop.
-            vector (torch.Tensor): cropped vector of len (end_index - start_index).
+            vector (Tensor): cropped vector of len (end_index - start_index).
         '''
         duration_samples = int(self.duration_sec * self.fs)
 
@@ -131,18 +133,16 @@ class HalfTruthDataset(Dataset):
         return start_idx, end_idx, vector[start_idx:end_idx]
 
 
-    def _generate_timestamps(self, timestamps:str, num_samples_audio:int) -> torch.Tensor:
+    def _generate_timestamps(self, timestamps:str, num_samples_audio:int) -> Tensor:
         '''
         Helper function to generate array of timestamp labels.
 
         Args:
-            timestamps (str): timestamps of real/fake data in audio. example is something like 
-            '0.00-4.96-T/4.96-5.65-F/5.65-9.26-T'.
-
+            timestamps (str): timestamps of real/fake data in audio. example is something like '0.00-4.96-T/4.96-5.65-F/5.65-9.26-T'.
             num_samples_audio (int): number of samples in audio. used to align last samples of timestamps to audio. 
 
         Returns:
-            samplewise_labels (torch.Tensor): samplewise labels of data.
+            samplewise_labels (Tensor): samplewise labels of data.
         '''
         # Split by / 
         split_timestamps = timestamps.split('/')
@@ -170,4 +170,4 @@ class HalfTruthDataset(Dataset):
         elif diff < 0:
             samplewise_labels = samplewise_labels[0:diff]
         
-        return torch.Tensor(samplewise_labels)
+        return Tensor(samplewise_labels)

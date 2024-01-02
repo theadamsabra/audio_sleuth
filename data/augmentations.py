@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from nnAudio.features import CQT1992v2
+from torch import Tensor
 from torchaudio.transforms import Resample
 
 class ResampleBlock(nn.Module):
@@ -21,15 +21,15 @@ class ResampleBlock(nn.Module):
         self.resample_to_new = Resample(self.input_sr, self.new_sr)  
         self.resample_to_original = Resample(self.new_sr, self.input_sr)
 
-    def forward(self, waveform:torch.Tensor) -> torch.Tensor:
+    def forward(self, waveform:Tensor) -> Tensor:
         '''
         Core implementation of resample block.
 
         Args:
-            waveform (torch.Tensor): audio tensor in time domain.
+            waveform (Tensor): audio tensor in time domain.
         
         Returns:
-            resampled_waveform (torch.Tensor): resampled audio tensor.
+            resampled_waveform (Tensor): resampled audio tensor.
         '''
         waveform = self.resample_to_new(waveform) 
         if self.return_original_sr:
@@ -49,7 +49,7 @@ class Augmentations(nn.Module):
         super().__init__(*args, **kwargs)
         self.augmentation_list = nn.ModuleList(augmentation_list)
     
-    def forward(self, x:torch.Tensor) -> torch.Tensor:
+    def forward(self, x:Tensor) -> Tensor:
         '''Loop through each augmentation and sequentially run the forward.'''
         for augmentation in self.augmentation_list:
             x = augmentation(x)  

@@ -38,8 +38,18 @@ class ScaledDotProductAttention(nn.Module):
         
 
 class MultiHeadAttention(nn.Module):
+    '''
+    Simple implementation of multihead attention.
+
+    Args:
+
+    '''
     def __init__(self, n_heads, embedding_dimension, temp, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.n_heads = n_heads 
         self.embedding_dimension = embedding_dimension
         self.temp = temp
+        self.scaled_dpa = ScaledDotProductAttention(self.temp)
+    
+    def forward(self, x:Tensor) -> Tensor:
+        pass 

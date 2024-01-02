@@ -1,4 +1,5 @@
 import torch
+from torch import Tensor
 from torch import nn
 
 
@@ -21,5 +22,5 @@ class Conv1dMaxPoolBlock(nn.Module):
         self.conv = nn.Conv1d(channel_in, channel_out, conv_kernel, conv_stride)
         self.pool = nn.MaxPool1d(pool_kernel, pool_stride)
     
-    def forward(self, x:torch.Tensor) -> torch.Tensor:
+    def forward(self, x:Tensor) -> Tensor:
         return self.pool(self.conv(x))
