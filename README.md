@@ -4,7 +4,7 @@ A torch-based open-source framework for detecting audio generated from generativ
 
 TODO:
 
-- [ ] Add bash scripts for downloading HAD
-- [ ] README for HAD
-- [ ] Create simple baseline model, training script, evaluation set
+- [ ] Test Half truth dataset class
+- [ ] Add wave fake
+- [ ] Add sing fake
 - [ ] Make pip package
