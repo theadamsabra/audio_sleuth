@@ -5,11 +5,11 @@
 
 # Audio Sleuth 
 
-A torch-based open-source framework for detecting audio generated from generative systems. The overarching goal of this repository is to be a toolbox for datasets, augmentations, and pretrained baseline models to assist researchers in the task of audio-based deepfake detection.
+A torch based open-source framework for detecting audio generated from generative systems. The overarching goal of this repository is to be a toolbox for datasets, augmentations, and pretrained baseline models to assist researchers in the task of audio deepfake detection.
 
 TODO:
 
-- [ ] Make `duration_sec` optional for base class
+- [ ] Have augmentations support label alignment. 
 - [ ] Test Half truth dataset class
 - [ ] Add dataset to Huggingface
 - [ ] Train model on half truth
@@ -17,4 +17,5 @@ TODO:
 - [ ] Add dataset to Huggingface
 - [ ] Train model on wave fake
 - [ ] Add sing fake when uploaded - ask @ ICASSP 2024
+- [ ] Add codec based augmentation
 - [ ] Make pip package
