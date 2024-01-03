@@ -5,6 +5,12 @@ A torch-based open-source framework for detecting audio generated from generativ
 TODO:
 
 - [ ] Test Half truth dataset class
+- [ ] Add dataset to Huggingface
+- [ ] Train model on half truth
+
 - [ ] Add wave fake
-- [ ] Add sing fake
+- [ ] Add dataset to Huggingface
+- [ ] Train model on wave fake
+  
+- [ ] Add sing fake when uploaded
 - [ ] Make pip package
