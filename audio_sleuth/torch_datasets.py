@@ -12,19 +12,22 @@ class BaseDataset(Dataset):
     Base class for all datasets. Contains general functions leveraged by all other classes.
     
     Args:
-        duration_sec (float): duration of crop in seconds.
+        duration_sec (float): duration of crop in seconds. if set to None, the whole file
+        will be processed.
         fs (int): sampling rate of file.
-        hop_size (int): hop size of transformations. 
-        win_size (int): win size of transformations.
         transform (Module): audio augmentation pipeline. default set to None.
     '''
     def __init__(self, duration_sec:float, fs:int, hop_size:int, win_size:int, \
                  transform:Module=None) -> None:
         super().__init__()
         self.duration_sec = duration_sec
+        
+        if self.duration_sec:
+            self.process_whole_file = False
+        else:
+            self.process_whole_file = True
+
         self.fs = fs
-        self.hop_size = hop_size
-        self.win_size = win_size
         self.transform = transform
 
     def __len__(self):
@@ -34,49 +37,6 @@ class BaseDataset(Dataset):
     def __getitem__(self, idx):
         '''Will be overwritten for each dataset.'''
         pass
-
-    def _pad_vector(self, vector:Tensor) -> Tensor:
-        '''
-        Pad vector for framing. Currently only supporting reflection padding.
-        
-        Args:
-            vector (Tensor): arbitrary 1D vector. 
-        
-        Returns:
-            padded_vector (Tensor): padded vector to accomodate framing.
-        '''
-        # Calculate total len needed with padding and get differnce
-        total_len = math.ceil(len(vector) / self.hop_size) * self.hop_size
-        pad_len = total_len - len(vector)
-
-        if pad_len % 2 == 0:
-            right = left = int(pad_len / 2)
-        else:
-            right = int(pad_len / 2)
-            left = int(pad_len / 2) + (pad_len % 2)
-
-        # Pad through reflection
-        left_pad_label = vector[0].item()
-        right_pad_label = vector[-1].item()
-
-        left_padding = Tensor([left_pad_label] * left)
-        right_padding = Tensor([right_pad_label] * right)
-
-        return torch.cat([left_padding, vector, right_padding])
-
-    def _frame_vector(self, vector:Tensor) -> Tensor:
-        '''
-        Frame vector of samplewise labels by win length and hop size of FFT. Take mean of every frame to
-        generate frame-wise labels. Framing is done after padding.
-
-        Args:
-            vector (Tensor): arbitrary 1D vector. 
-        
-        Returns:
-            framed_vector (Tensor): fake speech probability of frame.
-        '''
-        framed_labels = vector.unfold(0, self.win_size, self.hop_size)
-        return torch.mean(framed_labels, dim=-1)
 
     def _construct_random_indices(self, vector:Tensor) -> tuple[int, int]:
         '''
@@ -106,17 +66,13 @@ class HalfTruthDataset(BaseDataset):
     Paper can be read here: https://arxiv.org/pdf/2104.03617.pdf
 
     Args:
-        path_to_txt (str): path to text file containing paths and ground truth labels. assumes absolute path for easier 
-        parsing.
+        path_to_txt (str): path to text file containing paths and ground truth labels. assumes absolute path for easier parsing.
         duration_sec (float): duration of crop in seconds.
         fs (int): sampling rate of file.
-        hop_size (int): hop size of transformations. default set to 128.
-        win_size (int): win size of transformations. default set to 128.
         transform (Module): audio augmentation pipeline. default set to None.
     '''
-    def __init__(self, path_to_txt:str, duration_sec:float, fs:int, \
-                 hop_size:int = 128, win_size:int = 128, transform:Module=None) -> None:
-        super().__init__(duration_sec, fs, hop_size, win_size, transform)
+    def __init__(self, path_to_txt:str, duration_sec:float, fs:int, transform:Module=None) -> None:
+        super().__init__(duration_sec, fs, transform)
         self.path_to_txt = path_to_txt
         self.text_file = open(self.path_to_txt, 'r').read()
         # Construct additional params from path and metadata:
@@ -140,18 +96,16 @@ class HalfTruthDataset(BaseDataset):
         # Map timestamps to samplewise labels.
         labels = self._generate_timestamps(timestamps, num_samples_audio)
 
-        # Generate start and end indices to crop:
-        start_idx, end_idx = self._construct_random_indices(audio)
-        # Crop audio and samplewise labels  
-        audio = audio[start_idx:end_idx]
-        labels = labels[start_idx:end_idx]
+        # Crop audio and samplewise labels if needed:
+        if not self.process_whole_file:
+            # Generate start and end indices to crop:
+            start_idx, end_idx = self._construct_random_indices(audio)
+            audio = audio[start_idx:end_idx]
+            labels = labels[start_idx:end_idx]
 
-        if self.transform:
-            # Transform audio:
-            audio = self.transform(audio)
-            # Pad labels on both sides to accomodate spectrogram: 
-            padded_labels = self._pad_vector(labels) 
-            labels = self._frame_vector(padded_labels)
+        # # Transform audio if needed:
+        # if self.transform:
+        #     audio, labels = self.transform(audio, labels)
 
         return audio, labels 
      
