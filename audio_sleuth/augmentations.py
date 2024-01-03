@@ -78,21 +78,24 @@ class ResampleBlock(nn.Module):
         self.resample_to_new = Resample(self.input_sr, self.new_sr)  
         self.resample_to_original = Resample(self.new_sr, self.input_sr)
 
-    def forward(self, waveform:Tensor) -> Tensor:
+    def forward(self, waveform:Tensor, labels:Tensor) -> tuple[Tensor, Tensor]:
         '''
         Core implementation of resample block.
 
         Args:
             waveform (Tensor): audio tensor in time domain.
-        
+            labels (Tensor): samplewise labels in time domain. 
         Returns:
             resampled_waveform (Tensor): resampled audio tensor.
+            resampled_labels (Tensor): resampled label tensor.
         '''
         waveform = self.resample_to_new(waveform) 
+        resampled_labels = self.resample_to_new(labels)
+
         if self.return_original_sr:
-            return self.resample_to_original(waveform)
+            return self.resample_to_original(waveform), labels
         else:
-            return waveform
+            return waveform, resampled_labels
 
 class Augmentations(nn.Module):
     '''
@@ -106,8 +109,19 @@ class Augmentations(nn.Module):
         super().__init__(*args, **kwargs)
         self.augmentation_list = nn.ModuleList(augmentation_list)
     
-    def forward(self, x:Tensor) -> Tensor:
-        '''Loop through each augmentation and sequentially run the forward.'''
+    def forward(self, audio:Tensor, labels:Tensor) -> tuple[Tensor, Tensor]:
+        '''
+        Loop through each augmentation and sequentially run the forward.
+
+        Args:
+            audio (Tensor): audio tensor to be transformed.
+            labels (Tensor): label tensor to be transformed.
+        
+        Returns:
+            audio (Tensor): transformed audio tensor.
+            labels (Tensor): transformed label tensor.
+        '''
         for augmentation in self.augmentation_list:
-            x = augmentation(x)  
-        return x
+            audio, labels = augmentation(audio, labels)  
+
+        return audio, labels
