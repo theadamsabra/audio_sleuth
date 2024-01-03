@@ -110,12 +110,13 @@ class HalfTruthDataset(BaseDataset):
         parsing.
         duration_sec (float): duration of crop in seconds.
         fs (int): sampling rate of file.
-        transform (Module): audio augmentation pipeline. default set to None.
         hop_size (int): hop size of transformations. default set to 128.
         win_size (int): win size of transformations. default set to 128.
+        transform (Module): audio augmentation pipeline. default set to None.
     '''
-    def __init__(self, path_to_txt:str, duration_sec:float, fs:int, transform:Module=None, hop_size: int = 128, win_size: int = 128) -> None:
-        super().__init__(duration_sec, fs, transform, hop_size, win_size)
+    def __init__(self, path_to_txt:str, duration_sec:float, fs:int, \
+                 hop_size:int = 128, win_size:int = 128, transform:Module=None) -> None:
+        super().__init__(duration_sec, fs, hop_size, win_size, transform)
         self.path_to_txt = path_to_txt
         self.text_file = open(self.path_to_txt, 'r').read()
         # Construct additional params from path and metadata:
@@ -143,7 +144,7 @@ class HalfTruthDataset(BaseDataset):
         start_idx, end_idx = self._construct_random_indices(audio)
         # Crop audio and samplewise labels  
         audio = audio[start_idx:end_idx]
-        labels = audio[start_idx:end_idx]
+        labels = labels[start_idx:end_idx]
 
         if self.transform:
             # Transform audio:
