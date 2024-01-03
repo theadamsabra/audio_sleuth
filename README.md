@@ -16,7 +16,5 @@ TODO:
 - [ ] Add wave fake
 - [ ] Add dataset to Huggingface
 - [ ] Train model on wave fake
-- [ ] Add sing fake when uploaded
-- [ ] Make pip package
 - [ ] Add sing fake when uploaded - ask @ ICASSP 2024
 - [ ] Make pip package
