@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch
 from torch import Tensor
 from audio_sleuth.modules.conv import Conv1dMaxPoolBlock 
 
@@ -33,13 +34,15 @@ class CQTFramewiseDetection(nn.Module):
                 out_channels = self.conv_channels[i]
 
             self.convs.append(
-                Conv1dMaxPoolBlock(
-                    in_channels, out_channels, self.conv_kernels[i], self.conv_strides[i], \
-                    self.pool_kernels[i], self.pool_strides[i]
-                )
+                nn.Conv1d(
+                    in_channels, out_channels, self.conv_kernels[i], self.conv_strides[i]
+                ) 
             )
+        self.linear = nn.Linear(736, 345)
 
     def forward(self, x:Tensor) -> Tensor:
         for layer in self.convs:
-            x = layer(x)
-        return x
+            x = torch.relu(layer(x))
+        flattened_x = torch.flatten(x, 1, 2)
+        output = torch.sigmoid(self.linear(flattened_x))
+        return output

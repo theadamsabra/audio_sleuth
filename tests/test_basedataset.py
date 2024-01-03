@@ -1,5 +1,5 @@
 import torch 
-from data.torch_datasets import BaseDataset 
+from audio_sleuth.torch_datasets import BaseDataset 
 
 VECTOR_LEN_SAMPLES = 160001 
 VECTOR = torch.rand(VECTOR_LEN_SAMPLES)
