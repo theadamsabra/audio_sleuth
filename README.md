@@ -9,13 +9,14 @@ A torch-based open-source framework for detecting audio generated from generativ
 
 TODO:
 
+- [ ] Make `duration_sec` optional for base class
 - [ ] Test Half truth dataset class
 - [ ] Add dataset to Huggingface
 - [ ] Train model on half truth
-
 - [ ] Add wave fake
 - [ ] Add dataset to Huggingface
 - [ ] Train model on wave fake
-  
 - [ ] Add sing fake when uploaded
+- [ ] Make pip package
+- [ ] Add sing fake when uploaded - ask @ ICASSP 2024
 - [ ] Make pip package
