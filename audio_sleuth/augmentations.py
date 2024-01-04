@@ -1,5 +1,6 @@
 import math
 import torch
+import numpy as np
 import torch.nn as nn
 import torchaudio.transforms as T
 from torch import Tensor
@@ -93,24 +94,69 @@ class Resample(nn.Module):
         self.resample_to_new = T.Resample(self.input_sr, self.new_sr)  
         self.resample_to_original = T.Resample(self.new_sr, self.input_sr)
 
-    def forward(self, waveform:Tensor, labels:Tensor) -> tuple[Tensor, Tensor]:
+    def forward(self, audio:Tensor, labels:Tensor) -> tuple[Tensor, Tensor]:
         '''
         Core implementation of resample block.
 
         Args:
-            waveform (Tensor): audio tensor in time domain.
+            audio (Tensor): audio tensor in time domain.
             labels (Tensor): samplewise labels in time domain. 
+
+        Returns:
+            resampled_audio (Tensor): resampled audio tensor.
+            resampled_labels (Tensor): resampled label tensor.
+        '''
+        audio = self.resample_to_new(audio) 
+        resampled_labels = self.resample_to_new(labels)
+
+        if self.return_original_sr:
+            return self.resample_to_original(audio), labels
+        else:
+            return audio, resampled_labels
+
+class DynamicResampler(nn.Module):
+    '''
+    Dynamic resampler to randomly resample to a specific sampling rate with specific weights. 
+    If weights are not specified, uniform weighting will be applied. All audio vectors will be resampled back into 
+    `input_sr` for uniform shapes after other augmentations. The goal is to allow for the network to generalize classifications
+    across varying bandwidths.
+
+    Args:
+        input_sr (int): input sampling rate of audios.
+        output_sr (list[int]): list of sampling rates to be randomly selected from.
+        output_sr_weights (list[float]): optional param for weights of each sampling rate. 
+        will use uniform sampling rate if not specified.
+    '''
+    def __init__(self, input_sr:int, output_sr:list[int], output_sr_weights:list[float]=None, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.input_sr = input_sr
+        self.output_sr = output_sr
+        # If weights are not specified, just use uniform sampling
+        if output_sr_weights:
+            self.output_sr_weights = output_sr_weights
+        else:
+            self.output_sr_weights = [1 / (len(self.output_sr))] * len(self.output_sr)
+
+    def _select_rate(self):
+        '''Randomly select sampling rate.'''
+        return np.random.choice(a=self.output_sr, p=self.output_sr_weights)
+
+    def forward(self, audio:Tensor, labels:Tensor) -> tuple[Tensor, Tensor]:
+        '''
+        Dynamically select sampling rate and resample to/from old and new sampling rate.
+
+        Args:
+            audio (Tensor): audio tensor in time domain.
+            labels (Tensor): samplewise labels in time domain. 
+
         Returns:
             resampled_waveform (Tensor): resampled audio tensor.
             resampled_labels (Tensor): resampled label tensor.
         '''
-        waveform = self.resample_to_new(waveform) 
-        resampled_labels = self.resample_to_new(labels)
-
-        if self.return_original_sr:
-            return self.resample_to_original(waveform), labels
-        else:
-            return waveform, resampled_labels
+        selected_rate = self._select_rate()
+        resampler = Resample(self.input_sr, selected_rate)
+        resampled_audio, resampled_labels = resampler(audio, labels)
+        return resampled_audio, resampled_labels 
 
 class LFCC(nn.Module):
     '''
