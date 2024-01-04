@@ -17,8 +17,7 @@ class BaseDataset(Dataset):
         fs (int): sampling rate of file.
         transform (Module): audio augmentation pipeline. default set to None.
     '''
-    def __init__(self, duration_sec:float, fs:int, hop_size:int, win_size:int, \
-                 transform:Module=None) -> None:
+    def __init__(self, duration_sec:float, fs:int, transform:Module=None) -> None:
         super().__init__()
         self.duration_sec = duration_sec
         
