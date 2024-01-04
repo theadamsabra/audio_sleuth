@@ -31,11 +31,12 @@ class LabelAlignment(nn.Module):
         total_len = math.ceil(len(vector) / self.hop_size) * self.hop_size
         pad_len = total_len - len(vector)
 
-        if pad_len % 2 == 0:
+        remainder = pad_len % 2
+        if remainder == 0:
             right = left = int(pad_len / 2)
         else:
             right = int(pad_len / 2)
-            left = int(pad_len / 2) + (pad_len % 2)
+            left = right + remainder
 
         # Pad through reflection
         left_pad_label = vector[0].item()
@@ -59,6 +60,20 @@ class LabelAlignment(nn.Module):
         '''
         framed_labels = vector.unfold(0, self.win_size, self.hop_size)
         return torch.mean(framed_labels, dim=-1)
+
+    def forward(self, vector:Tensor) -> Tensor:
+        '''
+        Align labels given hop size and window size.
+
+        Args:
+            vector (Tensor): arbitrary 1D vector. 
+        
+        Returns:
+            aligned_vector (Tensor): padded and framed tensor.
+        '''
+        return self._frame_vector(
+            self._pad_vector(vector)
+        )
 
 class Resample(nn.Module):
     '''
@@ -102,7 +117,6 @@ class LFCC(nn.Module):
     Linear Frequency Cepstral Coefficient augmentation. We leverage torchaudio's implementation, however, we ensure the
     samplewise labels from the dataset are also aligned.
 
-
     Args:
         fs (int): sampling rate of audio.
         n_fft (int): number of FFT - creates n_fft // 2 + 1 bins.
@@ -137,9 +151,23 @@ class LFCC(nn.Module):
             n_lfcc=self.n_lfcc,
             speckwargs=self.speckwargs
         ) 
+        self.label_aligner = LabelAlignment(self.hop_size, self.win_size)
 
     def forward(self, audio:Tensor, labels:Tensor) -> tuple[Tensor, Tensor]:
-        pass
+        '''
+        Convert audio into LFCC and frame labels.
+
+        Args:
+            audio (Tensor): audio tensor in time domain.
+            labels (Tensor): samplewise labels in time domain. 
+        
+        Returns:
+            lfcc_tensor (Tensor): lfcc representation of audio of shape (n_lfcc, win_size)
+            framed_labels (Tensor): framed and averaged labels of shape (num_frames, win_size)
+        '''
+        lfcc_tensor = self.lfcc_extractor(audio)
+        framed_labels = self.label_aligner(labels)
+        return lfcc_tensor, framed_labels
 
 class Augmentations(nn.Module):
     '''
