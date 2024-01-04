@@ -1,8 +1,8 @@
 import math
 import torch
 import torch.nn as nn
+import torchaudio.transforms as T
 from torch import Tensor
-from torchaudio.transforms import Resample
 
 class LabelAlignment(nn.Module):
     '''
@@ -60,7 +60,7 @@ class LabelAlignment(nn.Module):
         framed_labels = vector.unfold(0, self.win_size, self.hop_size)
         return torch.mean(framed_labels, dim=-1)
 
-class ResampleBlock(nn.Module):
+class Resample(nn.Module):
     '''
     Resample block for resampling audio. Generally used for resampling down -> back to original sampling rate as augmentation.
 
@@ -75,8 +75,8 @@ class ResampleBlock(nn.Module):
         self.new_sr = new_sr
         self.return_original_sr = return_original_sr 
 
-        self.resample_to_new = Resample(self.input_sr, self.new_sr)  
-        self.resample_to_original = Resample(self.new_sr, self.input_sr)
+        self.resample_to_new = T.Resample(self.input_sr, self.new_sr)  
+        self.resample_to_original = T.Resample(self.new_sr, self.input_sr)
 
     def forward(self, waveform:Tensor, labels:Tensor) -> tuple[Tensor, Tensor]:
         '''
@@ -96,6 +96,50 @@ class ResampleBlock(nn.Module):
             return self.resample_to_original(waveform), labels
         else:
             return waveform, resampled_labels
+
+class LFCCBlock(nn.Module):
+    '''
+    Linear Frequency Cepstral Coefficient augmentation. We leverage torchaudio's implementation, however, we ensure the
+    samplewise labels from the dataset are also aligned.
+
+
+    Args:
+        fs (int): sampling rate of audio.
+        n_fft (int): number of FFT - creates n_fft // 2 + 1 bins.
+        hop_size (int): hop size of transformation.
+        win_size (int): window size of transformation.
+        n_filters (int): number of linear filters.
+        n_lfcc (int): number of linear frequency cepstral coefficients.
+        center (bool): flag to pad audio file. default set to True.
+    '''
+    def __init__(self, fs:int, n_fft:int, hop_size:int, win_size:int, n_filters:int, \
+                 n_lfcc:int, center:bool=True, speckwargs:dict=None, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.fs = fs
+        self.n_fft = n_fft
+        self.hop_size = hop_size
+        self.win_size = win_size
+        self.n_filters = n_filters
+        self.n_lfcc = n_lfcc
+        self.center = center
+        if speckwargs:
+            self.speckwargs = speckwargs
+        else:
+            self.speckwargs = {
+                'n_fft': self.n_fft,
+                'hop_length': self.hop_size,
+                'win_length': self.win_size,
+                'center': self.center
+            }
+        self.lfcc_extractor = T.LFCC(
+            sample_rate=self.fs,
+            n_filter=self.n_filters,
+            n_lfcc=self.n_lfcc,
+            speckwargs=self.speckwargs
+        ) 
+
+    def forward(self, audio:Tensor, labels:Tensor) -> tuple[Tensor, Tensor]:
+        pass
 
 class Augmentations(nn.Module):
     '''
