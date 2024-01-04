@@ -9,7 +9,6 @@ A torch based open-source framework for detecting audio generated from generativ
 
 TODO:
 
-- [ ] Have augmentations support label alignment. 
 - [ ] Test Half truth dataset class
 - [ ] Add dataset to Huggingface
 - [ ] Train model on half truth
