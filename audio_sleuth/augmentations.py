@@ -97,7 +97,7 @@ class Resample(nn.Module):
         else:
             return waveform, resampled_labels
 
-class LFCCBlock(nn.Module):
+class LFCC(nn.Module):
     '''
     Linear Frequency Cepstral Coefficient augmentation. We leverage torchaudio's implementation, however, we ensure the
     samplewise labels from the dataset are also aligned.
