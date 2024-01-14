@@ -1,5 +1,4 @@
 import os
-import random
 import torch 
 import librosa
 import math
@@ -22,7 +21,9 @@ class HalfTruthDataset(Dataset):
         transform (Module): audio augmentation pipeline. default set to None.
     '''
     def __init__(self, path_to_txt:str, fs:int, transform:Module=None) -> None:
-        super().__init__(fs, transform)
+        super().__init__()
+        self.fs = fs
+        self.transform = transform
         self.path_to_txt = path_to_txt
         self.text_file = open(self.path_to_txt, 'r').read()
         # Construct additional params from path and metadata:
