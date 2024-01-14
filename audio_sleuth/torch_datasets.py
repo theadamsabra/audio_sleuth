@@ -20,13 +20,8 @@ class BaseDataset(Dataset):
     def __init__(self, duration_sec:float, fs:int, transform:Module=None) -> None:
         super().__init__()
         self.duration_sec = duration_sec
-        
-        if self.duration_sec:
-            self.process_whole_file = False
-        else:
-            self.process_whole_file = True
-
         self.fs = fs
+        self.duration_samples = int(self.duration_sec * self.fs)
         self.transform = transform
 
     def __len__(self):
@@ -48,10 +43,8 @@ class BaseDataset(Dataset):
             start_idx (int): start index of vector.
             end_idx (int): end index of vector.
         '''
-        duration_samples = int(self.duration_sec * self.fs)
-
-        start_idx = random.randrange(0, len(vector)-duration_samples)
-        end_idx = start_idx + duration_samples
+        start_idx = random.randrange(0, len(vector)-self.duration_samples)
+        end_idx = start_idx + self.duration_samples
 
         return start_idx, end_idx 
 
@@ -95,16 +88,9 @@ class HalfTruthDataset(BaseDataset):
         # Map timestamps to samplewise labels.
         labels = self._generate_timestamps(timestamps, num_samples_audio)
 
-        # Crop audio and samplewise labels if needed:
-        if not self.process_whole_file:
-            # Generate start and end indices to crop:
-            start_idx, end_idx = self._construct_random_indices(audio)
-            audio = audio[start_idx:end_idx]
-            labels = labels[start_idx:end_idx]
-
-        # # Transform audio if needed:
-        # if self.transform:
-        #     audio, labels = self.transform(audio, labels)
+        # TODO: Enable transforms
+        # if self.transforms:
+        #   audio, labels = self.transform(audio, labels)
 
         return audio, labels 
      
