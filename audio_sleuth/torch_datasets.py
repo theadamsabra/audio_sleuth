@@ -7,49 +7,7 @@ from torch.nn import Module
 from torch import Tensor
 from torch.utils.data import Dataset
 
-class BaseDataset(Dataset):
-    '''
-    Base class for all datasets. Contains general functions leveraged by all other classes.
-    
-    Args:
-        duration_sec (float): duration of crop in seconds. if set to None, the whole file
-        will be processed.
-        fs (int): sampling rate of file.
-        transform (Module): audio augmentation pipeline. default set to None.
-    '''
-    def __init__(self, duration_sec:float, fs:int, transform:Module=None) -> None:
-        super().__init__()
-        self.duration_sec = duration_sec
-        self.fs = fs
-        self.duration_samples = int(self.duration_sec * self.fs)
-        self.transform = transform
-
-    def __len__(self):
-        '''Will be overwritten for each dataset.'''
-        pass 
-
-    def __getitem__(self, idx):
-        '''Will be overwritten for each dataset.'''
-        pass
-
-    def _construct_random_indices(self, vector:Tensor) -> tuple[int, int]:
-        '''
-        Construct random indices from length of vector.
-
-        Args:
-            vector (Tensor): samplewise labels of real/fake speech. 
-        
-        Returns:
-            start_idx (int): start index of vector.
-            end_idx (int): end index of vector.
-        '''
-        start_idx = random.randrange(0, len(vector)-self.duration_samples)
-        end_idx = start_idx + self.duration_samples
-
-        return start_idx, end_idx 
-
-
-class HalfTruthDataset(BaseDataset):
+class HalfTruthDataset(Dataset):
     '''
     Torch dataset of Half Truth Dataset by Jiangyan Yi, Ye Bai, Jianhua Tao, Haoxin Ma, Zhengkun Tian, 
     Chenglong Wang, Tao Wang, and Ruibo Fu.
