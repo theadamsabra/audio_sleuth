@@ -28,7 +28,7 @@ class OCSoftmax(nn.Module):
             x: feature matrix with shape (batch_size, feat_dim).
             labels: ground truth labels with shape (batch_size).
         """
-        w = F.normalize(self.center, p=2, dim=1)
+        w = F.normalize(self.center, p=2, dim=1).cuda()
         x = F.normalize(x, p=2, dim=1)
 
         scores = x @ w.transpose(0,1)
