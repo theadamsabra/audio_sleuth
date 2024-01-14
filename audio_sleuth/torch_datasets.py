@@ -21,8 +21,8 @@ class HalfTruthDataset(Dataset):
         fs (int): sampling rate of file.
         transform (Module): audio augmentation pipeline. default set to None.
     '''
-    def __init__(self, path_to_txt:str, duration_sec:float, fs:int, transform:Module=None) -> None:
-        super().__init__(duration_sec, fs, transform)
+    def __init__(self, path_to_txt:str, fs:int, transform:Module=None) -> None:
+        super().__init__(fs, transform)
         self.path_to_txt = path_to_txt
         self.text_file = open(self.path_to_txt, 'r').read()
         # Construct additional params from path and metadata:
