@@ -10,7 +10,6 @@ A torch based open-source framework for detecting audio generated from generativ
 TODO:
 
 - [ ] Add codec based augmentation
-- [ ] Add wave fake
 - [ ] Train model on wave fake and half truth
 - [ ] Add sing fake when uploaded - ask @ ICASSP 2024
 - [ ] Make pip package
