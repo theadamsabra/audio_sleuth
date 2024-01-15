@@ -10,57 +10,19 @@ class LabelAlignment(nn.Module):
     Label Alignment class to help with aligning sample wise labels from the time domain into other representations.
 
     Args:
-        hop_size (int): hop size of transformations.
         win_size (int): window size of transformations.
+        hop_size (int): hop size of transformations.
+        pad_samples (int): number of samples to pad vector. default set to 0.
+        pad_mode (str): type of pad mode. default set to `"constant"`. supported pad modes can be found [here](https://pytorch.org/docs/stable/generated/torch.nn.functional.pad.html).
+        pad_value (int): value to pad with. default set to 0 (i.e. zero padding.)
     '''
-    def __init__(self, hop_size:int, win_size:int, *args, **kwargs) -> None:
+    def __init__(self, win_size:int, hop_size:int, pad_samples:int=0, pad_mode:str='constant', pad_value:int=0, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.hop_size = hop_size
         self.win_size = win_size
-
-    def _pad_vector(self, vector:Tensor) -> Tensor:
-        '''
-        Pad vector for framing. Currently only supporting reflection padding.
-        
-        Args:
-            vector (Tensor): arbitrary 1D vector. 
-        
-        Returns:
-            padded_vector (Tensor): padded vector to accomodate framing.
-        '''
-        # Calculate total len needed with padding and get differnce
-        total_len = math.ceil(len(vector) / self.hop_size) * self.hop_size
-        pad_len = total_len - len(vector)
-
-        remainder = pad_len % 2
-        if remainder == 0:
-            right = left = int(pad_len / 2)
-        else:
-            right = int(pad_len / 2)
-            left = right + remainder
-
-        # Pad through reflection
-        left_pad_label = vector[0].item()
-        right_pad_label = vector[-1].item()
-
-        left_padding = Tensor([left_pad_label] * left)
-        right_padding = Tensor([right_pad_label] * right)
-
-        return torch.cat([left_padding, vector, right_padding])
-
-    def _frame_vector(self, vector:Tensor) -> Tensor:
-        '''
-        Frame vector of samplewise labels by win length and hop size of FFT. Take mean of every frame to
-        generate frame-wise labels. Framing is done after padding.
-
-        Args:
-            vector (Tensor): arbitrary 1D vector. 
-        
-        Returns:
-            framed_vector (Tensor): fake speech probability of frame.
-        '''
-        framed_labels = vector.unfold(0, self.win_size, self.hop_size)
-        return torch.mean(framed_labels, dim=-1)
+        self.hop_size = hop_size
+        self.pad_samples = pad_samples
+        self.pad_mode = pad_mode
+        self.pad_value = pad_value
 
     def forward(self, vector:Tensor) -> Tensor:
         '''
@@ -72,9 +34,15 @@ class LabelAlignment(nn.Module):
         Returns:
             aligned_vector (Tensor): padded and framed tensor.
         '''
-        return self._frame_vector(
-            self._pad_vector(vector)
-        )
+        # Zero pad if necessary:
+        if self.pad > 0:
+            vector = torch.nn.functional.pad(vector, (self.pad, self.pad), self.pad_mode, self.pad_value) 
+
+        # Frame vector and average:
+        framed_vector = []
+        aligned_vector = []
+
+        return aligned_vector
 
 class Resample(nn.Module):
     '''
