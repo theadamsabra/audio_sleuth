@@ -4,31 +4,8 @@ import librosa
 import math
 from torch.nn import Module
 from torch import Tensor
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 
-'''
-Collate function below:
-'''
-def pad_and_transform_collate(data_loader:DataLoader, transform:Module=None) -> tuple[Tensor, Tensor, list, list]:
-    # Setup all necessary output params
-    processed_audio = []
-    final_labels = []
-
-    # Loop through batch and run transforms:
-    for audio, labels in data_loader:
-        # Run transform if defined:
-        if transform:
-           audio, labels = transform(audio, labels)
-        processed_audio.append(audio) 
-        final_labels.append(labels)
-    
-    processed_audio = torch.nn.utils.rnn.pad_sequence(processed_audio, batch_first=True).unsqueeze(1).transpose(2, 3)
-    final_labels = torch.nn.utils.rnn.pad_sequence(final_labels, batch_first=True)
-    return processed_audio, final_labels.long()
-
-'''
-Datasets below:
-'''
 class HalfTruthDataset(Dataset):
     '''
     Torch dataset of Half Truth Dataset by Jiangyan Yi, Ye Bai, Jianhua Tao, Haoxin Ma, Zhengkun Tian, 
@@ -114,3 +91,16 @@ class HalfTruthDataset(Dataset):
             samplewise_labels = samplewise_labels[0:diff]
         
         return Tensor(samplewise_labels)
+
+class WaveFake(Dataset):
+    '''
+    Torch dataset of WaveFake dataset introduced by Joel Frank and Lea Schönherr.
+
+    Args:
+        real_root_dir (str): root dir of real dataset(s).
+        generated_root_dir (str): root directory of wavefake dataset (aka generated data.)
+    '''
+    def __init__(self, real_root_dir:str, generated_root_dir:str) -> None:
+        super().__init__()
+        self.real_root_dir = real_root_dir
+        self.generated_root_dir = generated_root_dir
