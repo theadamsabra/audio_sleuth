@@ -2,6 +2,7 @@ import os
 import torch 
 import librosa
 import math
+from utils import find_all_wav_files
 from torch.nn import Module
 from torch import Tensor
 from torch.utils.data import Dataset
@@ -99,8 +100,34 @@ class WaveFake(Dataset):
     Args:
         real_root_dir (str): root dir of real dataset(s).
         generated_root_dir (str): root directory of wavefake dataset (aka generated data.)
+        fs (int): sampling rate of file.
+        transform (Module): audio augmentation pipeline. default set to None.
     '''
-    def __init__(self, real_root_dir:str, generated_root_dir:str) -> None:
+    def __init__(self, real_root_dir:str, generated_root_dir:str, fs:int, transform:Module=None) -> None:
         super().__init__()
         self.real_root_dir = real_root_dir
         self.generated_root_dir = generated_root_dir
+        self.fs = fs
+        self.transform = transform
+        # Parse out relevant information:
+        self.real_root_dir_wavs = find_all_wav_files(self.real_root_dir)
+        self.generated_root_dir_wavs = find_all_wav_files(self.generated_root_dir)
+        self.all_files = self.real_root_dir_wavs + self.generated_root_dir_wavs
+
+    def __len__(self): 
+        return len(self.all_files)
+
+    def __getitem__(self, idx): 
+        # Get filepath:
+        filepath = self.all_files[idx]
+
+        # Check if which root dir is in the path.
+        # This will serve as our binary labels.
+        label = 0 if self.real_root_dir in filepath else 1
+
+        # Load in audio, and construct sample-wise labels:
+        audio, _ = librosa.load(filepath, sr=self.fs)
+        audio = torch.from_numpy(audio)
+        labels = torch.full(audio.shape, label)
+
+        return audio, labels
