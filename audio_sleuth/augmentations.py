@@ -1,7 +1,7 @@
-import math
 import torch
 import numpy as np
 import torch.nn as nn
+from torchaudio.io import CodecConfig
 import torchaudio.transforms as T
 from torch import Tensor
 
@@ -182,6 +182,38 @@ class LFCC(nn.Module):
         lfcc_tensor = self.lfcc_extractor(audio)
         framed_labels = self.label_aligner(labels)
         return lfcc_tensor, framed_labels
+
+class Codec(nn.Module):
+    '''
+    Apply codec as augmentation. 
+
+    Args:
+        format (str): codec to apply.
+        encoder (str): optional encoder to use to encode to specified format.
+        codec_config (CodecConfig): codec configuration for additional manipulation
+    '''
+    def __init__(self, format:str, encoder:str=None, codec_config:CodecConfig=None, \
+                  *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)    
+        self.format = format
+        self.encoder = encoder 
+        self.codec_config = codec_config
+
+    def forward(self, audio:Tensor, labels:Tensor):
+        '''
+        We will apply the codec to the audio tensor and leave labels as is. However,
+        the labels are still passed through the forward to ensure it is compatible with
+        the `Augmentations` class.
+
+        Args:
+            audio (Tensor): audio tensor in time domain.
+            labels (Tensor): samplewise labels in time domain. 
+        
+        Returns:
+            codec_applied_audio (Tensor): audio tensor in time domain with codec applied to it.
+            labels (Tensor): samplewise labels in time domain.
+        '''
+        pass
 
 class Augmentations(nn.Module):
     '''
