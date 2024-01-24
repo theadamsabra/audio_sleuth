@@ -1,5 +1,4 @@
 import os
-import fnmatch
 
 def find_all_wav_files(dir_:str):
     '''Find all wav files in directory'''
