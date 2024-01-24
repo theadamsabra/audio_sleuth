@@ -1,9 +1,11 @@
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from torchaudio.transforms import MelSpectrogram 
 
+'''
+Implementation from 
+    https://www.assemblyai.com/blog/end-to-end-speech-recognition-pytorch/
+'''
 class CNNLayerNorm(nn.Module):
     """
     Layer normalization for convolutional outputs. Co-opted from https://www.assemblyai.com/blog/end-to-end-speech-recognition-pytorch/
