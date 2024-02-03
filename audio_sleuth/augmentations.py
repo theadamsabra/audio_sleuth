@@ -1,6 +1,8 @@
 import torch
+import math
 import numpy as np
 import torch.nn as nn
+import torchaudio.functional as F
 import torchaudio.transforms as T
 from torch import Tensor
 
@@ -15,13 +17,30 @@ class LabelAlignment(nn.Module):
         pad_mode (str): type of pad mode. default set to `"constant"`. supported pad modes can be found [here](https://pytorch.org/docs/stable/generated/torch.nn.functional.pad.html).
         pad_value (int): value to pad with. default set to 0 (i.e. zero padding.)
     '''
-    def __init__(self, win_size:int, hop_size:int, pad_samples:int=0, pad_mode:str='constant', pad_value:int=0, *args, **kwargs) -> None:
+    def __init__(self, win_size:int, hop_size:int, pad_mode:str='constant', pad_value:int=0, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.win_size = win_size
         self.hop_size = hop_size
-        self.pad_samples = pad_samples
         self.pad_mode = pad_mode
         self.pad_value = pad_value
+
+    def _pad_vector(self, vector:Tensor) -> Tensor:
+        '''
+        Zero pad vector (right padding).
+
+        Args:
+            vector (Tensor): arbitrary 1D vector. 
+        
+        Returns:
+            padded_vector (Tensor): padded 1D vector.
+        '''
+        # Zero pad if necessary:
+        num_samples = len(vector)
+        num_frames = num_samples / self.hop_size
+        num_samples_needed = math.ceil(num_frames) * self.hop_size
+        padding = num_samples_needed - num_samples # right padding for now
+        padded_vector = nn.functional.pad(vector, (0, padding), self.pad_mode, self.pad_value)
+        return padded_vector
 
     def forward(self, vector:Tensor) -> Tensor:
         '''
@@ -33,15 +52,8 @@ class LabelAlignment(nn.Module):
         Returns:
             aligned_vector (Tensor): padded and framed tensor.
         '''
-        # Zero pad if necessary:
-        if self.pad > 0:
-            vector = torch.nn.functional.pad(vector, (self.pad, self.pad), self.pad_mode, self.pad_value) 
-
-        # Frame vector and average:
-        framed_vector = []
-        aligned_vector = []
-
-        return aligned_vector
+        padded_vector = self._pad_vector(vector)
+        pass
 
 class Resample(nn.Module):
     '''
@@ -210,3 +222,8 @@ class Augmentations(nn.Module):
             audio, labels = augmentation(audio, labels)  
 
         return audio, labels
+
+
+if __name__ == "__main__":
+    label_alignment = LabelAlignment(512,512)
+    label_alignment(torch.randn(120000))
