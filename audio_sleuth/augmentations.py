@@ -35,11 +35,11 @@ class LabelAlignment(nn.Module):
             padded_vector (Tensor): padded 1D vector.
         '''
         # Zero pad if necessary:
-        num_samples = len(vector)
-        num_frames = num_samples / self.hop_size
-        num_samples_needed = math.ceil(num_frames) * self.hop_size
-        padding = num_samples_needed - num_samples # right padding for now
-        padded_vector = nn.functional.pad(vector, (0, padding), self.pad_mode, self.pad_value)
+        signal_dim = vector.dim()
+        extended_shape = [1] * (3-signal_dim) + list(vector.size())
+        pad = int(self.win_size // 2)
+        padded_vector = torch.functional.pad(vector.view(extended_shape), [pad, pad], 
+                                             mode=self.pad_mode, value=self.pad_value)
         return padded_vector
 
     def forward(self, vector:Tensor) -> Tensor:
