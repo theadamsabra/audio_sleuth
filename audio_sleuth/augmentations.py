@@ -2,7 +2,6 @@ import torch
 import math
 import numpy as np
 import torch.nn as nn
-import torchaudio.functional as F
 import torchaudio.transforms as T
 from torch import Tensor
 
@@ -26,7 +25,7 @@ class LabelAlignment(nn.Module):
 
     def _pad_vector(self, vector:Tensor) -> Tensor:
         '''
-        Zero pad vector (right padding).
+        Zero pad vector on both sides to align with torchaudio based FFT.
 
         Args:
             vector (Tensor): arbitrary 1D vector. 
@@ -38,7 +37,7 @@ class LabelAlignment(nn.Module):
         signal_dim = vector.dim()
         extended_shape = [1] * (3-signal_dim) + list(vector.size())
         pad = int(self.win_size // 2)
-        padded_vector = torch.functional.pad(vector.view(extended_shape), [pad, pad], 
+        padded_vector = torch.nn.functional.pad(vector.view(extended_shape), [pad, pad], 
                                              mode=self.pad_mode, value=self.pad_value)
         return padded_vector
 
@@ -53,7 +52,8 @@ class LabelAlignment(nn.Module):
             aligned_vector (Tensor): padded and framed tensor.
         '''
         padded_vector = self._pad_vector(vector)
-        pass
+        framed_vector = padded_vector.unfold(-1, self.win_size, self.hop_size)
+        return framed_vector
 
 class Resample(nn.Module):
     '''
@@ -222,8 +222,3 @@ class Augmentations(nn.Module):
             audio, labels = augmentation(audio, labels)  
 
         return audio, labels
-
-
-if __name__ == "__main__":
-    label_alignment = LabelAlignment(512,512)
-    label_alignment(torch.randn(120000))
