@@ -42,3 +42,11 @@ dataset = HalfTruthDataset(
   transform = transform
 )
 ```
+
+
+TODO:
+
+- [ ] Enable transformations on datasets
+- [ ] Downloaders for datasets
+- [ ] Melspec, spec augmentations
+- [ ] Evaluate method, maybe enable eval in loop
