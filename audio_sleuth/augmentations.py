@@ -149,10 +149,10 @@ class LFCC(nn.Module):
         win_size (int): window size of transformation.
         n_filters (int): number of linear filters.
         n_lfcc (int): number of linear frequency cepstral coefficients.
-        center (bool): flag to pad audio file. default set to True.
+        speckwargs (dict): spectrogram keyword args for LFCC. If None, default kwargs include hop_size, win_size, n_fft, and center=True.
     '''
     def __init__(self, fs:int, n_fft:int, hop_size:int, win_size:int, n_filters:int, \
-                 n_lfcc:int, center:bool=True, speckwargs:dict=None, *args, **kwargs) -> None:
+                 n_lfcc:int, speckwargs:dict=None, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.fs = fs
         self.n_fft = n_fft
@@ -160,7 +160,6 @@ class LFCC(nn.Module):
         self.win_size = win_size
         self.n_filters = n_filters
         self.n_lfcc = n_lfcc
-        self.center = center
         if speckwargs:
             self.speckwargs = speckwargs
         else:
@@ -168,7 +167,7 @@ class LFCC(nn.Module):
                 'n_fft': self.n_fft,
                 'hop_length': self.hop_size,
                 'win_length': self.win_size,
-                'center': self.center
+                'center': True
             }
         self.lfcc_extractor = T.LFCC(
             sample_rate=self.fs,
@@ -176,7 +175,7 @@ class LFCC(nn.Module):
             n_lfcc=self.n_lfcc,
             speckwargs=self.speckwargs
         ) 
-        self.label_aligner = LabelAlignment(self.hop_size, self.win_size)
+        self.label_aligner = LabelAlignment(self.win_size, self.hop_size)
 
     def forward(self, audio:Tensor, labels:Tensor) -> tuple[Tensor, Tensor]:
         '''
@@ -188,7 +187,7 @@ class LFCC(nn.Module):
         
         Returns:
             lfcc_tensor (Tensor): lfcc representation of audio of shape (n_lfcc, win_size)
-            framed_labels (Tensor): framed and averaged labels of shape (num_frames, win_size)
+            framed_labels (Tensor): framed and averaged labels of shape (win_size)
         '''
         lfcc_tensor = self.lfcc_extractor(audio)
         framed_labels = self.label_aligner(labels)
