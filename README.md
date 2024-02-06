@@ -38,11 +38,11 @@ transform = Augmentations(
 # Returns torch Dataset that can be fed into DataLoader
 dataset = HalfTruthDataset(
   path_to_txt, # Initialize to your txt file of filepaths and labels from dataset
-  fs=16000,
-  transform = transform
+  fs=16000
 )
 ```
 
+However, I'm a sole dev - these things don't work together yet.
 
 TODO:
 
