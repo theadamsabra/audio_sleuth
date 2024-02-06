@@ -1,6 +1,3 @@
-import sys
-sys.path.append('..')
-
 import torch
 from audio_sleuth.augmentations import LabelAlignment
 
