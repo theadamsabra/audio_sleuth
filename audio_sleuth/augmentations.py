@@ -39,7 +39,7 @@ class LabelAlignment(nn.Module):
         pad = int(self.win_size // 2)
         padded_vector = torch.nn.functional.pad(vector.view(extended_shape), [pad, pad], 
                                              mode=self.pad_mode, value=self.pad_value)
-        return padded_vector
+        return padded_vector.flatten()
 
     def forward(self, vector:Tensor) -> Tensor:
         '''
@@ -53,7 +53,7 @@ class LabelAlignment(nn.Module):
         '''
         padded_vector = self._pad_vector(vector)
         framed_vector = padded_vector.unfold(-1, self.win_size, self.hop_size)
-        return framed_vector
+        return framed_vector.mean(dim=-1)
 
 class Resample(nn.Module):
     '''
