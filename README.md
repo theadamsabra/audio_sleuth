@@ -23,30 +23,33 @@ Here is an example of how to chain together augmentations on the Half Truth Data
 
 ```python
 from audio_sleuth.augmentations import Resample, LFCC, Augmentations
-from audio_sleuth.data.datasets import HalfTruthDataset 
+from audio_sleuth.data.datasets import pad_and_transform_collate, HalfTruthDataset 
+from torch.utils.data import DataLoader
 
-# Augmentation chain
+# Create chain of transformations
 transform = Augmentations(
-  [
+[
     Resample(input_sr=48000, new_sr=16000, return_original_sr=False), # Downsample block
     LFCC(
-      fs=16000, n_fft=512, hop_size=128, win_size=128, n_filters=128, n_lfcc=40 # LFCC augmentation
+    fs=16000, n_fft=512, hop_size=128, win_size=128, n_filters=128, n_lfcc=40 # LFCC augmentation
     )
-  ]
+]
 )
 
+path_to_txt = '/home/adam/projects/audio_sleuth/audio_data/half_truth/HAD/HAD_train/HAD_train_label.txt'
 # Returns torch Dataset that can be fed into DataLoader
 dataset = HalfTruthDataset(
-  path_to_txt, # Initialize to your txt file of filepaths and labels from dataset
-  fs=16000
+path_to_txt, # Initialize to your txt file of filepaths and labels from dataset
+fs=16000
 )
+
+# You can feed this data_loader into your training
+data_loader = DataLoader(dataset, batch_size=32, shuffle=True, collate_fn=lambda x: pad_and_transform_collate(x, transform))
 ```
 
-However, I'm a sole dev - these things don't work together yet.
 
 TODO:
 
-- [ ] Enable transformations on datasets
 - [ ] Downloaders for datasets
 - [ ] Melspec, spec augmentations
 - [ ] Evaluate method, maybe enable eval in loop
