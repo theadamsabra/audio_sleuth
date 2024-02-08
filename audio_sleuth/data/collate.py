@@ -1,8 +1,9 @@
 import torch
 from torch.utils.data import DataLoader
-from torch.nn import Module, Tensor
+from torch import Tensor
+from torch.nn import Module
 
-def pad_and_transform_collate(data_loader:DataLoader, transform:Module=None) -> tuple[Tensor, Tensor]:
+def pad_and_transform_collate(data:tuple, transform:Module=None) -> tuple[Tensor, Tensor]:
     '''
     Implementation from 
         https://www.assemblyai.com/blog/end-to-end-speech-recognition-pytorch/
@@ -23,14 +24,21 @@ def pad_and_transform_collate(data_loader:DataLoader, transform:Module=None) -> 
     final_labels = []
 
     # Loop through batch and run transforms:
-    for audio, labels in data_loader:
+    for audio, labels in data:
         # Run transform if defined:
         if transform:
            audio, labels = transform(audio, labels)
-        processed_audio.append(audio) 
+
+        processed_audio.append(audio.T) 
         final_labels.append(labels)
 
     # Dynamic padding to fit to the longest segment in batch. 
-    processed_audio = torch.nn.utils.rnn.pad_sequence(processed_audio, batch_first=True).unsqueeze(1).transpose(2, 3)
+    if transform:
+        # Feature space padding
+        processed_audio = torch.nn.utils.rnn.pad_sequence(processed_audio, batch_first=True).unsqueeze(1).transpose(2, 3)
+    else:
+        # Time domain padding
+        processed_audio = torch.nn.utils.rnn.pad_sequence(processed_audio, batch_first=True).unsqueeze(1)
+
     final_labels = torch.nn.utils.rnn.pad_sequence(final_labels, batch_first=True)
     return processed_audio, final_labels.long()
