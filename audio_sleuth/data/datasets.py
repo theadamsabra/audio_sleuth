@@ -2,11 +2,26 @@ import os
 import torch 
 import librosa
 import math
-from utils import find_all_wav_files
-from torch.nn import Module
 from torch import Tensor
 from torch.utils.data import Dataset
 
+'''
+Helper functions
+'''
+def find_all_wav_files(dir_:str):
+    '''Find all wav files in directory'''
+    files = []
+    
+    # Walk across all dir/subdirs
+    for root, _, filenames in os.walk(dir_):
+        # Get the full paths of the wav if it is in this dir and keep it
+        tmp = [os.path.join(root, filename) for filename in filenames if '.wav' in filename]
+        files += tmp
+    return files
+
+'''
+Datasets
+'''
 class HalfTruthDataset(Dataset):
     '''
     Torch dataset of Half Truth Dataset by Jiangyan Yi, Ye Bai, Jianhua Tao, Haoxin Ma, Zhengkun Tian, 
@@ -21,10 +36,9 @@ class HalfTruthDataset(Dataset):
         fs (int): sampling rate of file.
         transform (Module): audio augmentation pipeline. default set to None.
     '''
-    def __init__(self, path_to_txt:str, fs:int, transform:Module=None) -> None:
+    def __init__(self, path_to_txt:str, fs:int) -> None:
         super().__init__()
         self.fs = fs
-        self.transform = transform
         self.path_to_txt = path_to_txt
         self.text_file = open(self.path_to_txt, 'r').read()
         # Construct additional params from path and metadata:
@@ -47,10 +61,6 @@ class HalfTruthDataset(Dataset):
 
         # Map timestamps to samplewise labels.
         labels = self._generate_timestamps(timestamps, num_samples_audio)
-
-        # TODO: Enable transforms
-        # if self.transforms:
-        #   audio, labels = self.transform(audio, labels)
 
         return audio, labels 
      
@@ -103,12 +113,11 @@ class WaveFake(Dataset):
         fs (int): sampling rate of file.
         transform (Module): audio augmentation pipeline. default set to None.
     '''
-    def __init__(self, real_root_dir:str, generated_root_dir:str, fs:int, transform:Module=None) -> None:
+    def __init__(self, real_root_dir:str, generated_root_dir:str, fs:int) -> None:
         super().__init__()
         self.real_root_dir = real_root_dir
         self.generated_root_dir = generated_root_dir
         self.fs = fs
-        self.transform = transform
         # Parse out relevant information:
         self.real_root_dir_wavs = find_all_wav_files(self.real_root_dir)
         self.generated_root_dir_wavs = find_all_wav_files(self.generated_root_dir)
