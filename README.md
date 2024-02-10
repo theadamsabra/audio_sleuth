@@ -50,6 +50,7 @@ data_loader = DataLoader(dataset, batch_size=32, shuffle=True, collate_fn=lambda
 
 TODO:
 
-- [ ] Downloaders for datasets
-- [ ] Melspec, spec augmentations
+- [ ] Configure Wavefake for when there is/is not real data
+- [ ] Test WaveFake dataset
+- [ ] Finish training example
 - [ ] Evaluate method, maybe enable eval in loop
