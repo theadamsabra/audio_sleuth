@@ -2,6 +2,8 @@ import os
 import torch 
 import librosa
 import math
+import subprocess
+import zipfile
 from torch import Tensor
 from torch.utils.data import Dataset
 
@@ -19,9 +21,72 @@ def find_all_wav_files(dir_:str):
         files += tmp
     return files
 
+def download_halftruth_dataset(save_root:str, remove_zip:bool=True):
+    '''
+    Downloader for the Half-Truth dataset from Zenodo by Jiangyan Yi et al.
+
+    Link to dataset: https://zenodo.org/records/10377492
+    Link to Half-Truth paper: https://arxiv.org/abs/2104.03617 
+    
+    Args:
+        save_root (str): root directory to save data in.
+        remove_zip (bool): flag to delete zip file or not. default set to True.
+    '''
+    link_addr = 'https://zenodo.org/records/10377492/files/HAD.zip'
+
+    # Check if directory exists, if not make it:
+    if not os.path.isdir(save_root):
+        os.mkdir(save_root)
+    
+    path_to_zip = os.path.join(save_root, 'HAD.zip')
+
+    print('Downloading Half Truth Dataset:')
+    subprocess.run(['curl', link_addr, '--output', path_to_zip])
+    print('Completed.')
+
+    print('Extracting zip file:')
+    with zipfile.ZipFile(path_to_zip, 'r') as zip_ref:
+        zip_ref.extractall(save_root)
+    print('Completed.') 
+
+    if remove_zip:
+        os.remove(path_to_zip)
+
+def download_wavefake(save_root:dir, remove_zip:bool):
+    '''
+    Downloader for the Wave Fake dataset from Zenodo by Joel Frank and Lea Schonherr.
+    
+    Link to dataset: https://zenodo.org/records/5642694
+    Link to Wave Fake paper: https://arxiv.org/abs/2111.02813
+    
+    Args:
+        save_root (str): root directory to save data in.
+        remove_zip (bool): flag to delete zip file or not. default set to True.
+    '''
+    link_addr = 'https://zenodo.org/records/5642694/files/generated_audio.zip'
+
+    # Check if directory exists, if not make it:
+    if not os.path.isdir(save_root):
+        os.mkdir(save_root)
+
+    path_to_zip = os.path.join(save_root, 'wavefake.zip')
+
+    print('Downloading Wave Fake Dataset:')
+    subprocess.run(['curl', link_addr, '--output', path_to_zip])
+    print('Completed.')
+
+    print('Extracting zip file:')
+    with zipfile.ZipFile(path_to_zip, 'r') as zip_ref:
+        zip_ref.extractall(save_root)
+    print('Completed.') 
+
+    if remove_zip:
+        os.remove(path_to_zip)
+
 '''
-Datasets
+Core dataset classes:
 '''
+
 class HalfTruthDataset(Dataset):
     '''
     Torch dataset of Half Truth Dataset by Jiangyan Yi, Ye Bai, Jianhua Tao, Haoxin Ma, Zhengkun Tian, 
@@ -31,19 +96,28 @@ class HalfTruthDataset(Dataset):
     Paper can be read here: https://arxiv.org/pdf/2104.03617.pdf
 
     Args:
-        path_to_txt (str): path to text file containing paths and ground truth labels. assumes absolute path for easier parsing.
-        duration_sec (float): duration of crop in seconds.
+        root_dir (str): path to where the data will be downloaded. 
         fs (int): sampling rate of file.
-        transform (Module): audio augmentation pipeline. default set to None.
+        set_type (str): type of set. usually train, test, or dev.
+        remove_zip (bool): remove downloaded zip file. default set to True just to save you some more space.
     '''
-    def __init__(self, path_to_txt:str, fs:int) -> None:
+    def __init__(self, root_dir:str, fs:int, set_type:str, remove_zip:bool=True) -> None:
         super().__init__()
         self.fs = fs
-        self.path_to_txt = path_to_txt
-        self.text_file = open(self.path_to_txt, 'r').read()
+        self.root_dir = root_dir 
+        self.remove_zip = remove_zip
+        self.set_type = set_type
+
+        # Check if it is downloaded or not:
+        self.data_dir = os.path.join(self.root_dir, 'HAD') 
+        is_downloaded = os.path.isdir(self.data_dir) 
+        if not is_downloaded:
+            download_halftruth_dataset(self.root_dir, self.remove_zip) 
+
         # Construct additional params from path and metadata:
-        self.root_dir = os.path.dirname(self.path_to_txt)
-        self.set_type = os.path.basename(self.root_dir).split('_')[-1]
+        self.set_root_path = os.path.join(self.data_dir, f'HAD_{self.set_type}')
+        self.text_file_path = os.path.join(self.set_root_path, f'HAD_{self.set_type}_label.txt')
+        self.text_file = open(self.text_file_path, 'r').read()
         self.observations = self.text_file.split('\n')
 
     def __len__(self):
@@ -55,7 +129,7 @@ class HalfTruthDataset(Dataset):
         filename, timestamps, _ = observation.split(' ')
         
         # Load file and construct to torch tensor
-        audio, _ = librosa.load(os.path.join(self.root_dir, self.set_type, f'{filename}.wav'), sr=self.fs)
+        audio, _ = librosa.load(os.path.join(self.set_root_path, self.set_type, f'{filename}.wav'), sr=self.fs)
         audio = torch.from_numpy(audio)
         num_samples_audio = len(audio)
 
