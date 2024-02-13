@@ -49,8 +49,8 @@ data_loader = DataLoader(dataset, batch_size=32, shuffle=True, collate_fn=lambda
 
 
 TODO:
-
-- [ ] Configure Wavefake for when there is/is not real data
-- [ ] Test WaveFake dataset
-- [ ] Finish training example
+- [ ] Add mel spectrogram to augmentation
+- [ ] Finish DeepSpeech2 example with melspec
 - [ ] Evaluate method, maybe enable eval in loop
+- [ ] Documentation on datasets
+- [ ] Documentation on augmentations
