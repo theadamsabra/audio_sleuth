@@ -1,6 +1,4 @@
 from audio_sleuth.data.datasets import HalfTruthDataset
-import warnings
-warnings.simplefilter('ignore')
 
 ROOT_DIR = 'audio_data/half_truth'
 FS = 44100
