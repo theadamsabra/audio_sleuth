@@ -194,7 +194,6 @@ class WaveFake(Dataset):
                  ljspeech_dataset_root:str=None, jsut_dataset_root:str=None) -> None:
         super().__init__()
         self.root_dir = root_dir
-        self.wavefake_dir = os.path.join(self.root_dir, 'wavefake')
         self.fs = fs
         self.remove_zip = remove_zip
         self.ljspeech_datset_root = ljspeech_dataset_root
@@ -203,12 +202,12 @@ class WaveFake(Dataset):
         self.jsut_dataset_root = jsut_dataset_root
         self.jsut_dataset_files = self._check_real_dir(self.jsut_dataset_root)
 
-        is_downloaded = os.path.isdir(self.wavefake_dir)
+        is_downloaded = os.path.isdir(self.root_dir)
         if not is_downloaded:
             download_wavefake(self.root_dir, self.remove_zip)
     
         # Parse out relevant information:
-        self.generated_root_dir = os.path.join(self.wavefake_dir, 'generated_audio')
+        self.generated_root_dir = os.path.join(self.root_dir, 'generated_audio')
         self.generated_root_dir_wavs = find_all_wav_files(self.generated_root_dir)
 
         self.all_files = self.generated_root_dir_wavs + self.ljspeech_datset_files + self.jsut_dataset_files
@@ -222,7 +221,7 @@ class WaveFake(Dataset):
 
         # Check if which root dir is in the path.
         # This will serve as our binary labels.
-        label = 0 if self.real_root_dir in filepath else 1
+        label = 1 if self.generated_root_dir in filepath else 0
 
         # Load in audio, and construct sample-wise labels:
         audio, _ = librosa.load(filepath, sr=self.fs)
