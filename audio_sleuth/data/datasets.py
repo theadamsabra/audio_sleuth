@@ -10,7 +10,7 @@ from torch.utils.data import Dataset
 '''
 Helper functions
 '''
-def find_all_wav_files(dir_:str):
+def find_all_wav_files(dir_:str) -> list:
     '''Find all wav files in directory'''
     files = []
     
@@ -69,6 +69,10 @@ def download_wavefake(save_root:dir, remove_zip:bool):
     if not os.path.isdir(save_root):
         os.mkdir(save_root)
 
+    wavefake_dir = os.path.join(save_root, 'wavefake')
+    if not os.path.isdir(wavefake_dir):
+        os.mkdir(wavefake_dir)
+
     path_to_zip = os.path.join(save_root, 'wavefake.zip')
 
     print('Downloading Wave Fake Dataset:')
@@ -77,7 +81,7 @@ def download_wavefake(save_root:dir, remove_zip:bool):
 
     print('Extracting zip file:')
     with zipfile.ZipFile(path_to_zip, 'r') as zip_ref:
-        zip_ref.extractall(save_root)
+        zip_ref.extractall(wavefake_dir)
     print('Completed.') 
 
     if remove_zip:
@@ -182,20 +186,32 @@ class WaveFake(Dataset):
     Torch dataset of WaveFake dataset introduced by Joel Frank and Lea Schönherr.
 
     Args:
-        real_root_dir (str): root dir of real dataset(s).
-        generated_root_dir (str): root directory of wavefake dataset (aka generated data.)
+        root_dir (str): root directory of data.
         fs (int): sampling rate of file.
-        transform (Module): audio augmentation pipeline. default set to None.
+        remove_zip (bool): remove downloaded zip file. default set to True just to save you some more space.
     '''
-    def __init__(self, real_root_dir:str, generated_root_dir:str, fs:int) -> None:
+    def __init__(self, root_dir:str, fs:int, remove_zip:bool=True, \
+                 ljspeech_dataset_root:str=None, jsut_dataset_root:str=None) -> None:
         super().__init__()
-        self.real_root_dir = real_root_dir
-        self.generated_root_dir = generated_root_dir
+        self.root_dir = root_dir
+        self.wavefake_dir = os.path.join(self.root_dir, 'wavefake')
         self.fs = fs
+        self.remove_zip = remove_zip
+        self.ljspeech_datset_root = ljspeech_dataset_root
+        self.ljspeech_datset_files = self._check_real_dir(self.ljspeech_datset_root)
+
+        self.jsut_dataset_root = jsut_dataset_root
+        self.jsut_dataset_files = self._check_real_dir(self.jsut_dataset_root)
+
+        is_downloaded = os.path.isdir(self.wavefake_dir)
+        if not is_downloaded:
+            download_wavefake(self.root_dir, self.remove_zip)
+    
         # Parse out relevant information:
-        self.real_root_dir_wavs = find_all_wav_files(self.real_root_dir)
+        self.generated_root_dir = os.path.join(self.wavefake_dir, 'generated_audio')
         self.generated_root_dir_wavs = find_all_wav_files(self.generated_root_dir)
-        self.all_files = self.real_root_dir_wavs + self.generated_root_dir_wavs
+
+        self.all_files = self.generated_root_dir_wavs + self.ljspeech_datset_files + self.jsut_dataset_files
 
     def __len__(self): 
         return len(self.all_files)
@@ -214,3 +230,17 @@ class WaveFake(Dataset):
         labels = torch.full(audio.shape, label)
 
         return audio, labels
+    
+    def _check_real_dir(self, dataset_root:str) -> list:
+        '''
+        Check if directory of real files exists. If so, get all wav files in it.
+
+        Args:
+            dataset_root (str): path to dataset root.
+        Returns:
+            list_of_files (list): list of all wav files in root if dataset exists.
+        '''
+        if dataset_root:
+            return find_all_wav_files(dataset_root)
+        else:
+            return []
