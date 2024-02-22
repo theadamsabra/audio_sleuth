@@ -46,11 +46,3 @@ fs=16000
 # You can feed this data_loader into your training
 data_loader = DataLoader(dataset, batch_size=32, shuffle=True, collate_fn=lambda x: pad_and_transform_collate(x, transform))
 ```
-
-
-TODO:
-- [ ] Add mel spectrogram to augmentation
-- [ ] Finish DeepSpeech2 example with melspec
-- [ ] Evaluate method, maybe enable eval in loop
-- [ ] Documentation on datasets
-- [ ] Documentation on augmentations
