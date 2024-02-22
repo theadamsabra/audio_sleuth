@@ -193,6 +193,43 @@ class LFCC(nn.Module):
         framed_labels = self.label_aligner(labels)
         return lfcc_tensor, framed_labels
 
+class MelSpectrogram(nn.Module):
+    '''
+    Mel Spectrogram augmentation. 
+
+    Args:
+        fs (int): sampling rate of audio.
+        n_fft (int): number of FFT - creates n_fft // 2 + 1 bins.
+        hop_size (int): hop size of transformation.
+        win_size (int): window size of transformation.
+        n_mels (int): number of mels.
+    '''
+    def __init__(self, fs:int, n_fft:int, hop_size:int, win_size:int, n_mels:int, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.fs = fs
+        self.n_fft = n_fft
+        self.hop_size = hop_size
+        self.win_size = win_size
+        self.n_mels = n_mels
+        self.melspec = T.MelSpectrogram(self.fs, self.n_fft, self.win_size, self.hop_size, n_mels=self.n_mels)
+        self.label_alignment = LabelAlignment(self.win_size, self.hop_size)
+
+    def forward(self, audio:Tensor, labels:Tensor):
+        '''
+        Convert audio to mel spectrogram and frame labels.
+
+        Args:
+            audio (Tensor): audio tensor to be transformed.
+            labels (Tensor): label tensor to be transformed.
+        
+        Returns:
+            mel_spec (Tensor): mel spectrogram.
+            framed_labels (Tensor): framed labels.
+        '''
+        mel_spec = self.melspec(audio)
+        framed_labels = self.label_alignment(labels)
+        return mel_spec, framed_labels
+    
 class Augmentations(nn.Module):
     '''
     Core augmentation class to allow for a chain of augmentations applied to data. Used as core transformation internally.
